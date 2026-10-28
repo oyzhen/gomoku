@@ -19,6 +19,7 @@ export const DEFAULT_CONFIG: GameConfig = {
     baseUrl: "https://api.openai.com/v1",
     apiKey: "",
     model: "",
+    responseFormat: "tools",
     reasoningEffort: "default",
     parameters: '{\n  "max_tokens": 4096,\n  "temperature": 0.2\n}',
   },

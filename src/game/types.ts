@@ -26,6 +26,8 @@ export interface LLMSettings {
   baseUrl: string;
   apiKey: string;
   model: string;
+  /** Structured tool calling by default; JSON is the compatibility fallback. */
+  responseFormat: "tools" | "json";
   /** Optional reasoning effort. "default" does not send a reasoning_effort field. */
   reasoningEffort: "default" | "low" | "medium" | "high";
   /** OpenAI-compatible request parameters as editable JSON. Null removes a field. */
