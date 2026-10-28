@@ -7,6 +7,7 @@ import {
 import { startGame, stopGame } from "@/game/boot";
 import { DEFAULT_CONFIG, type GomokuController } from "@/game/controller";
 import { getAIProfile } from "@/game/ai-core";
+import { parseLLMParameters } from "@/game/llm";
 import { storage } from "@/game/storage";
 import { THEME_ORDER, THEMES } from "@/game/themes";
 import { BLACK, coordinateName, WHITE, type GameConfig, type GameSnapshot, type Player } from "@/game/types";
@@ -91,9 +92,17 @@ export default function Home() {
   }, [snapshot.moves.length]);
 
   const begin = () => {
-    if (config.mode === "llm" && (!config.llm.baseUrl.trim() || !config.llm.model.trim() || !config.llm.apiKey.trim())) {
-      setFormError("请完整填写接口地址、模型名称和 API Key");
-      return;
+    if (config.mode === "llm") {
+      if (!config.llm.baseUrl.trim() || !config.llm.model.trim() || !config.llm.apiKey.trim()) {
+        setFormError("请完整填写接口地址、模型名称和 API Key");
+        return;
+      }
+      try {
+        parseLLMParameters(config.llm.parameters);
+      } catch (error) {
+        setFormError(error instanceof Error ? error.message : "模型参数格式不正确");
+        return;
+      }
     }
     setFormError("");
     controllerRef.current?.start(config);
@@ -122,13 +131,13 @@ export default function Home() {
   }, [snapshot.status, showRules, config]);
 
   const update = <K extends keyof GameConfig>(key: K, value: GameConfig[K]) => setConfig((old) => ({ ...old, [key]: value }));
-  const updateLLM = (key: keyof GameConfig["llm"], value: string) => setConfig((old) => ({ ...old, llm: { ...old.llm, [key]: value } }));
+  const updateLLM = <K extends keyof GameConfig["llm"]>(key: K, value: GameConfig["llm"][K]) => setConfig((old) => ({ ...old, llm: { ...old.llm, [key]: value } }));
   const activeTheme = snapshot.status === "title" ? config.theme : snapshot.theme;
   const profile = getAIProfile(config.level);
   const machineChoice = snapshot.openingPhase === "secondChoice" ? WHITE : snapshot.openingPhase === "firstChoice" ? BLACK : null;
   const showOpeningChoice = snapshot.status === "playing" && machineChoice !== null && !snapshot.thinking && (snapshot.mode === "local" || machineChoice === snapshot.humanColor);
   const machineTurn = snapshot.mode !== "local" && snapshot.currentPlayer !== snapshot.humanColor;
-  const canRetry = snapshot.status === "playing" && !snapshot.thinking && (machineTurn || machineChoice !== null) && /失败|中断|超时|两次/.test(snapshot.message);
+  const canRetry = snapshot.status === "playing" && !snapshot.thinking && (machineTurn || machineChoice !== null) && /失败|中断|超时|两次|长度|输出|接口|参数|拦截/.test(snapshot.message);
 
   return (
     <div id="game-root" data-theme={activeTheme}>
@@ -171,6 +180,9 @@ export default function Home() {
                 <label>接口地址<input value={config.llm.baseUrl} onChange={(e) => updateLLM("baseUrl", e.target.value)} placeholder="https://api.example.com/v1" /></label>
                 <label>模型名称<input value={config.llm.model} onChange={(e) => updateLLM("model", e.target.value)} placeholder="填写服务商支持的模型 ID" /></label>
                 <label>API Key<input type="password" value={config.llm.apiKey} onChange={(e) => updateLLM("apiKey", e.target.value)} placeholder="仅保留在当前标签页" autoComplete="off" /></label>
+                <label>思考强度<select value={config.llm.reasoningEffort} onChange={(e) => updateLLM("reasoningEffort", e.target.value as GameConfig["llm"]["reasoningEffort"])}><option value="default">服务商默认</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select></label>
+                <label className="model-params">模型参数（JSON）<textarea value={config.llm.parameters} onChange={(e) => updateLLM("parameters", e.target.value)} spellCheck={false} aria-label="模型参数 JSON" /></label>
+                <p>可调整 max_tokens、temperature 等参数；设为 null 可删除一项。高推理模型若报错，可改用 max_completion_tokens，并将 temperature 设为 null。思考强度仅在非默认时发送 reasoning_effort。</p>
                 <p>OpenAI 兼容的 /chat/completions 接口；服务商需允许浏览器跨域。密钥不会上传至本游戏服务器或写入仓库。</p>
               </div>
             )}

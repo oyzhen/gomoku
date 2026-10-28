@@ -122,11 +122,15 @@ await page.getByTestId("mode-llm").click();
 await page.getByLabel("接口地址").fill("http://mock.local/v1");
 await page.getByLabel("模型名称").fill("test-gomoku-model");
 await page.getByLabel("API Key").fill("not-a-real-key");
+await page.getByLabel("思考强度").selectOption("high");
+await page.screenshot({ path: join(SHOTS, "07-llm-settings.png") });
 let apiCalled = false;
 await page.route("http://mock.local/v1/chat/completions", async (route) => {
   apiCalled = true;
   const body = route.request().postDataJSON();
   assert.equal(body.model, "test-gomoku-model");
+  assert.equal(body.max_tokens, 4096);
+  assert.equal(body.reasoning_effort, "high");
   assert.match(body.messages[0].content, /五子棋/);
   await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message: { content: '{"row":9,"col":9,"reason":"连接两翼，保持攻势"}' } }] }) });
 });
