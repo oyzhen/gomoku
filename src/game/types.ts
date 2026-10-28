@@ -81,5 +81,5 @@ export interface AIStats {
 }
 
 export const otherPlayer = (player: Player): Player => (player === BLACK ? WHITE : BLACK);
-export const playerName = (player: Player): string => `${player === BLACK ? "黑棋" : "白棋"}`;
+export const playerName = (player: Player): string => (player === BLACK ? "黑棋" : "白棋");
 export const coordinateName = ({ row, col }: Point): string => `${String.fromCharCode(65 + col)}${row + 1}`;
