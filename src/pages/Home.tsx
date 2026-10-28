@@ -38,6 +38,7 @@ function loadConfig(): GameConfig {
     config.opening = config.opening === "swap2" ? "swap2" : "none";
     if (!["tools", "json"].includes(config.llm.responseFormat)) config.llm.responseFormat = "tools";
     if (!["default", "low", "medium", "high"].includes(config.llm.reasoningEffort)) config.llm.reasoningEffort = "default";
+    config.llm.timeoutSeconds = Math.max(10, Math.min(600, Math.round(Number(config.llm.timeoutSeconds) || 120)));
     config.llm.apiKey = sessionStorage.getItem("xuanping.llm.key") ?? "";
     return config;
   } catch {
@@ -97,6 +98,10 @@ export default function Home() {
     if (config.mode === "llm") {
       if (!config.llm.baseUrl.trim() || !config.llm.model.trim() || !config.llm.apiKey.trim()) {
         setFormError("请完整填写接口地址、模型名称和 API Key");
+        return;
+      }
+      if (!Number.isInteger(config.llm.timeoutSeconds) || config.llm.timeoutSeconds < 10 || config.llm.timeoutSeconds > 600) {
+        setFormError("大模型超时时间需为 10–600 秒的整数");
         return;
       }
       try {
@@ -184,8 +189,9 @@ export default function Home() {
                 <label>API Key<input type="password" value={config.llm.apiKey} onChange={(e) => updateLLM("apiKey", e.target.value)} placeholder="仅保留在当前标签页" autoComplete="off" /></label>
                 <label>落子格式<select value={config.llm.responseFormat} onChange={(e) => updateLLM("responseFormat", e.target.value as GameConfig["llm"]["responseFormat"])}><option value="tools">工具调用（推荐）</option><option value="json">简单 JSON（兼容）</option></select></label>
                 <label>思考强度<select value={config.llm.reasoningEffort} onChange={(e) => updateLLM("reasoningEffort", e.target.value as GameConfig["llm"]["reasoningEffort"])}><option value="default">服务商默认</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select></label>
+                <label>超时时间（秒）<input type="number" min="10" max="600" step="10" value={config.llm.timeoutSeconds} onChange={(e) => updateLLM("timeoutSeconds", Number(e.target.value))} /></label>
                 <label className="model-params">模型参数（JSON）<textarea value={config.llm.parameters} onChange={(e) => updateLLM("parameters", e.target.value)} spellCheck={false} aria-label="模型参数 JSON" /></label>
-                <p>默认仅发送紧凑棋谱，由模型自动选择 place_move（不强制 tool_choice，兼容思考模式），不再重复发送文字棋盘；不支持工具调用时可切换简单 JSON。可调整 max_tokens、temperature 等参数，设为 null 可删除一项；高推理模型可改用 max_completion_tokens。</p>
+                <p>默认仅发送紧凑棋谱，由模型自动选择 place_move（不强制 tool_choice，兼容思考模式），不再重复发送文字棋盘；不支持工具调用时可切换简单 JSON。超时时间仅控制本地等待（10–600 秒），不会发送给服务商。可调整 max_tokens、temperature 等参数，设为 null 可删除一项；高推理模型可改用 max_completion_tokens。</p>
                 <p>OpenAI 兼容的 /chat/completions 接口；服务商需允许浏览器跨域。密钥不会上传至本游戏服务器或写入仓库。</p>
               </div>
             )}

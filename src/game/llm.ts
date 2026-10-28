@@ -117,7 +117,8 @@ async function requestOnce(
   const controller = new AbortController();
   const relay = () => controller.abort();
   signal.addEventListener("abort", relay, { once: true });
-  const timeout = window.setTimeout(() => controller.abort(), 30000);
+  const timeoutSeconds = Math.max(10, Math.min(600, Math.round(Number(settings.timeoutSeconds) || 120)));
+  const timeout = window.setTimeout(() => controller.abort(), timeoutSeconds * 1000);
   try {
     const response = await fetch(endpoint(settings.baseUrl), {
       method: "POST",
@@ -139,7 +140,7 @@ async function requestOnce(
     if (messageText(choice.message).trim() || choice.message?.tool_calls?.length) return choice;
     throw new Error("接口没有返回可识别的落子，请检查落子格式、模型参数和响应格式");
   } catch (error) {
-    if (controller.signal.aborted) throw new Error(signal.aborted ? "对局已取消" : "大模型响应超时（30 秒）");
+    if (controller.signal.aborted) throw new Error(signal.aborted ? "对局已取消" : `大模型响应超时（${timeoutSeconds} 秒），可在设置中调整等待时间`);
     throw error;
   } finally {
     window.clearTimeout(timeout);

@@ -124,6 +124,8 @@ await page.getByLabel("模型名称").fill("test-gomoku-model");
 await page.getByLabel("API Key").fill("not-a-real-key");
 assert.equal(await page.getByLabel("落子格式").inputValue(), "tools");
 await page.getByLabel("思考强度").selectOption("high");
+assert.equal(await page.getByLabel("超时时间（秒）").inputValue(), "120");
+await page.getByLabel("超时时间（秒）").fill("180");
 await page.screenshot({ path: join(SHOTS, "07-llm-settings.png") });
 let apiCalled = "";
 await page.route("http://mock.local/v1/chat/completions", async (route) => {
@@ -132,6 +134,7 @@ await page.route("http://mock.local/v1/chat/completions", async (route) => {
   assert.equal(body.model, "test-gomoku-model");
   assert.equal(body.max_tokens, 4096);
   assert.equal(body.reasoning_effort, "high");
+  assert.equal(body.timeoutSeconds, undefined);
   assert.equal(body.tools[0].function.name, "place_move");
   assert.equal(body.tool_choice, undefined);
   assert.match(body.messages[1].content, /BH8/);

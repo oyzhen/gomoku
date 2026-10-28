@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { buildLLMRequestBody, extractLLMMove, extractLLMToolMove, parseLLMParameters } from "./llm";
-import type { LLMSettings } from "./types";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { buildLLMRequestBody, extractLLMMove, extractLLMToolMove, parseLLMParameters, requestLLMMove } from "./llm";
+import { BLACK, type LLMSettings } from "./types";
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe("LLM response parsing", () => {
   it("accepts plain and fenced JSON", () => {
@@ -27,6 +32,7 @@ describe("configurable model parameters", () => {
     model: "test-model",
     responseFormat: "tools",
     reasoningEffort: "default",
+    timeoutSeconds: 120,
     parameters: '{"max_tokens":4096,"temperature":null}',
   };
 
@@ -62,5 +68,24 @@ describe("configurable model parameters", () => {
   it("rejects malformed or non-object parameter JSON", () => {
     expect(() => parseLLMParameters("{")).toThrow("有效的 JSON");
     expect(() => parseLLMParameters("[]")).toThrow("JSON 对象");
+  });
+
+  it("uses the configured local request timeout", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("window", { setTimeout, clearTimeout });
+    vi.stubGlobal("fetch", vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+    })));
+    const pending = requestLLMMove(
+      { ...settings, timeoutSeconds: 10 },
+      new Uint8Array(225),
+      [],
+      BLACK,
+      "freestyle",
+      new AbortController().signal,
+    );
+    const rejection = expect(pending).rejects.toThrow("大模型响应超时（10 秒）");
+    await vi.advanceTimersByTimeAsync(10000);
+    await rejection;
   });
 });

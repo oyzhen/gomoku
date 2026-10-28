@@ -30,6 +30,8 @@ export interface LLMSettings {
   responseFormat: "tools" | "json";
   /** Optional reasoning effort. "default" does not send a reasoning_effort field. */
   reasoningEffort: "default" | "low" | "medium" | "high";
+  /** Local request timeout in seconds; this is not sent to the provider. */
+  timeoutSeconds: number;
   /** OpenAI-compatible request parameters as editable JSON. Null removes a field. */
   parameters: string;
 }
@@ -79,5 +81,5 @@ export interface AIStats {
 }
 
 export const otherPlayer = (player: Player): Player => (player === BLACK ? WHITE : BLACK);
-export const playerName = (player: Player): string => (player === BLACK ? "黑棋" : "白棋");
+export const playerName = (player: Player): string => `${player === BLACK ? "黑棋" : "白棋"}`;
 export const coordinateName = ({ row, col }: Point): string => `${String.fromCharCode(65 + col)}${row + 1}`;
