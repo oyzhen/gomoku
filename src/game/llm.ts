@@ -12,6 +12,25 @@ const RULE_TEXT: Record<RuleSet, string> = {
   renju: "连珠规则：黑棋恰好五连获胜，三三、四四、长连为禁手；白棋无禁手，五连或长连获胜。",
 };
 
+export function parseLLMParameters(source: string): Record<string, unknown> {
+  if (!source.trim()) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch {
+    throw new Error("模型参数不是有效的 JSON，请检查引号、逗号和括号");
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("模型参数必须是 JSON 对象");
+  return Object.fromEntries(Object.entries(parsed).filter(([, value]) => value !== null));
+}
+
+export function buildLLMRequestBody(settings: LLMSettings, messages: unknown[]): Record<string, unknown> {
+  const parameters = parseLLMParameters(settings.parameters);
+  const reasoningEffort = settings.reasoningEffort === "default" ? {} : { reasoning_effort: settings.reasoningEffort };
+  // Protocol fields are protected; model parameters cannot replace the model ID or messages.
+  return { ...parameters, ...reasoningEffort, model: settings.model, messages };
+}
+
 export function extractLLMMove(content: string): { move: Point; reason: string } | null {
   const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? content;
   const object = fenced.match(/\{[\s\S]*?\}/)?.[0];
@@ -46,18 +65,26 @@ async function requestOnce(
     const response = await fetch(endpoint(settings.baseUrl), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.apiKey}` },
-      body: JSON.stringify({ model: settings.model, messages, temperature: 0.2, max_tokens: 320 }),
+      body: JSON.stringify(buildLLMRequestBody(settings, messages)),
       signal: controller.signal,
     });
     if (!response.ok) {
       const detail = (await response.text()).slice(0, 160);
       throw new Error(`接口返回 ${response.status}${detail ? `：${detail}` : ""}`);
     }
-    const data = await response.json() as { choices?: Array<{ message?: { content?: string | Array<{ text?: string }> } }> };
-    const content = data.choices?.[0]?.message?.content;
-    if (typeof content === "string") return content;
-    if (Array.isArray(content)) return content.map((part) => part.text ?? "").join("\n");
-    throw new Error("接口没有返回可识别的文本内容");
+    const data = await response.json() as { choices?: Array<{ finish_reason?: string; message?: { content?: string | Array<{ text?: string }> } }> };
+    const choice = data.choices?.[0];
+    const content = choice?.message?.content;
+    if (typeof content === "string" && content.trim()) return content;
+    if (Array.isArray(content)) {
+      const text = content.map((part) => part.text ?? "").join("\n");
+      if (text.trim()) return text;
+    }
+    if (choice?.finish_reason === "length") {
+      throw new Error("模型输出长度不足，未生成落子 JSON。请提高 max_tokens／max_completion_tokens，或降低思考强度");
+    }
+    if (choice?.finish_reason === "content_filter") throw new Error("模型输出被内容过滤器拦截，请调整模型或重试");
+    throw new Error("接口没有返回可识别的落子文本，请检查模型参数和响应格式");
   } catch (error) {
     if (controller.signal.aborted) throw new Error(signal.aborted ? "对局已取消" : "大模型响应超时（30 秒）");
     throw error;

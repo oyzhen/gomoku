@@ -26,6 +26,10 @@ export interface LLMSettings {
   baseUrl: string;
   apiKey: string;
   model: string;
+  /** Optional reasoning effort. "default" does not send a reasoning_effort field. */
+  reasoningEffort: "default" | "low" | "medium" | "high";
+  /** OpenAI-compatible request parameters as editable JSON. Null removes a field. */
+  parameters: string;
 }
 
 export interface GameConfig {

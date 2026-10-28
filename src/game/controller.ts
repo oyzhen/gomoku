@@ -15,7 +15,13 @@ export const DEFAULT_CONFIG: GameConfig = {
   humanColor: BLACK,
   theme: "walnut",
   opening: "none",
-  llm: { baseUrl: "https://api.openai.com/v1", apiKey: "", model: "" },
+  llm: {
+    baseUrl: "https://api.openai.com/v1",
+    apiKey: "",
+    model: "",
+    reasoningEffort: "default",
+    parameters: '{\n  "max_tokens": 4096,\n  "temperature": 0.2\n}',
+  },
 };
 
 const DEMO_MOVES: Move[] = [
