@@ -185,7 +185,7 @@ export default function Home() {
                 <label>落子格式<select value={config.llm.responseFormat} onChange={(e) => updateLLM("responseFormat", e.target.value as GameConfig["llm"]["responseFormat"])}><option value="tools">工具调用（推荐）</option><option value="json">简单 JSON（兼容）</option></select></label>
                 <label>思考强度<select value={config.llm.reasoningEffort} onChange={(e) => updateLLM("reasoningEffort", e.target.value as GameConfig["llm"]["reasoningEffort"])}><option value="default">服务商默认</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select></label>
                 <label className="model-params">模型参数（JSON）<textarea value={config.llm.parameters} onChange={(e) => updateLLM("parameters", e.target.value)} spellCheck={false} aria-label="模型参数 JSON" /></label>
-                <p>默认仅发送紧凑棋谱并调用 place_move，不再重复发送文字棋盘；不支持工具调用时可切换简单 JSON。可调整 max_tokens、temperature 等参数，设为 null 可删除一项；高推理模型可改用 max_completion_tokens。</p>
+                <p>默认仅发送紧凑棋谱，由模型自动选择 place_move（不强制 tool_choice，兼容思考模式），不再重复发送文字棋盘；不支持工具调用时可切换简单 JSON。可调整 max_tokens、temperature 等参数，设为 null 可删除一项；高推理模型可改用 max_completion_tokens。</p>
                 <p>OpenAI 兼容的 /chat/completions 接口；服务商需允许浏览器跨域。密钥不会上传至本游戏服务器或写入仓库。</p>
               </div>
             )}

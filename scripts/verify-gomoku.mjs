@@ -133,7 +133,7 @@ await page.route("http://mock.local/v1/chat/completions", async (route) => {
   assert.equal(body.max_tokens, 4096);
   assert.equal(body.reasoning_effort, "high");
   assert.equal(body.tools[0].function.name, "place_move");
-  assert.equal(body.tool_choice.function.name, "place_move");
+  assert.equal(body.tool_choice, undefined);
   assert.match(body.messages[1].content, /BH8/);
   assert.doesNotMatch(body.messages[1].content, /当前棋盘/);
   await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ finish_reason: "tool_calls", message: { content: null, tool_calls: [{ id: "call_mock_1", type: "function", function: { name: "place_move", arguments: '{"row":9,"col":9}' } }] } }] }) });

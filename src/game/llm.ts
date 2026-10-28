@@ -60,11 +60,12 @@ export function parseLLMParameters(source: string): Record<string, unknown> {
 export function buildLLMRequestBody(settings: LLMSettings, messages: unknown[]): Record<string, unknown> {
   const parameters = parseLLMParameters(settings.parameters);
   const reasoningEffort = settings.reasoningEffort === "default" ? {} : { reasoning_effort: settings.reasoningEffort };
-  const responseProtocol = settings.responseFormat === "tools"
-    ? { tools: [PLACE_MOVE_TOOL], tool_choice: { type: "function", function: { name: "place_move" } } }
-    : {};
-  // Protocol fields are protected; advanced parameters cannot replace them.
-  return { ...parameters, ...reasoningEffort, ...responseProtocol, model: settings.model, messages };
+  const responseProtocol = settings.responseFormat === "tools" ? { tools: [PLACE_MOVE_TOOL] } : {};
+  const body: Record<string, unknown> = { ...parameters, ...reasoningEffort, ...responseProtocol, model: settings.model, messages };
+  // Some thinking models reject forced tool choices. Omitting it means auto and also
+  // covers models that think by default, even when no reasoning_effort is selected.
+  if (settings.responseFormat === "tools") delete body.tool_choice;
+  return body;
 }
 
 function normalizeMove(parsed: { row?: number; col?: number; reason?: unknown }): LLMMoveResult | null {
@@ -184,7 +185,8 @@ export async function requestLLMMove(
 
     const toolCallId = settings.responseFormat === "tools" ? toolCalls?.[0]?.id : undefined;
     if (toolCallId) {
-      messages.push({ role: "assistant", content: content || null, tool_calls: toolCalls });
+      // Preserve provider-specific fields such as reasoning_content on tool retries.
+      messages.push({ role: "assistant", ...choice.message });
       messages.push({ role: "tool", tool_call_id: toolCallId, content: correction });
     } else {
       messages.push({ role: "assistant", content });

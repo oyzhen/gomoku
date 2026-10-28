@@ -40,9 +40,9 @@ describe("configurable model parameters", () => {
     expect(body.messages).toBe(messages);
   });
 
-  it("requires the compact place_move tool by default", () => {
-    const body = buildLLMRequestBody(settings, []);
-    expect(body.tool_choice).toEqual({ type: "function", function: { name: "place_move" } });
+  it("offers place_move without forcing tool_choice in thinking mode", () => {
+    const body = buildLLMRequestBody({ ...settings, parameters: '{"tool_choice":"required"}' }, []);
+    expect(body).not.toHaveProperty("tool_choice");
     const tools = body.tools as Array<{ function: { name: string; parameters: { required: string[] } } }>;
     expect(tools[0].function.name).toBe("place_move");
     expect(tools[0].function.parameters.required).toEqual(["row", "col"]);
