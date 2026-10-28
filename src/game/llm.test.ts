@@ -63,6 +63,8 @@ describe("configurable model parameters", () => {
   it("only sends reasoning_effort when explicitly selected", () => {
     const body = buildLLMRequestBody({ ...settings, reasoningEffort: "high" }, []);
     expect(body.reasoning_effort).toBe("high");
+    const noThinking = buildLLMRequestBody({ ...settings, reasoningEffort: "none" }, []);
+    expect(noThinking.reasoning_effort).toBe("none");
   });
 
   it("rejects malformed or non-object parameter JSON", () => {

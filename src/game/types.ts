@@ -29,7 +29,7 @@ export interface LLMSettings {
   /** Structured tool calling by default; JSON is the compatibility fallback. */
   responseFormat: "tools" | "json";
   /** Optional reasoning effort. "default" does not send a reasoning_effort field. */
-  reasoningEffort: "default" | "low" | "medium" | "high";
+  reasoningEffort: "default" | "none" | "low" | "medium" | "high";
   /** Local request timeout in seconds; this is not sent to the provider. */
   timeoutSeconds: number;
   /** OpenAI-compatible request parameters as editable JSON. Null removes a field. */

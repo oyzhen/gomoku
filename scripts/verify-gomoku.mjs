@@ -123,6 +123,8 @@ await page.getByLabel("接口地址").fill("http://mock.local/v1");
 await page.getByLabel("模型名称").fill("test-gomoku-model");
 await page.getByLabel("API Key").fill("not-a-real-key");
 assert.equal(await page.getByLabel("落子格式").inputValue(), "tools");
+await page.getByLabel("思考强度").selectOption("none");
+assert.equal(await page.getByLabel("思考强度").inputValue(), "none");
 await page.getByLabel("思考强度").selectOption("high");
 assert.equal(await page.getByLabel("超时时间（秒）").inputValue(), "120");
 await page.getByLabel("超时时间（秒）").fill("180");
