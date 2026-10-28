@@ -40,7 +40,9 @@ npm run preview
 1. 接口地址，例如服务商提供的 `https://…/v1`；
 2. 服务商支持的模型 ID；
 3. API Key；
-4. 思考强度与模型参数 JSON。默认输出预算为 4096 tokens，低／中／高思考强度映射为 `reasoning_effort`，默认不发送该字段。
+4. 落子格式、思考强度与模型参数 JSON。默认输出预算为 4096 tokens，低／中／高思考强度映射为 `reasoning_effort`，默认不发送该字段。
+
+默认通过 `place_move(row, col)` 工具调用落子，不支持工具调用的服务商可切换为简单 JSON。请求只发送按序排列的紧凑棋谱，不再重复发送文字棋盘，也不要求模型生成落子理由；坐标和禁手仍由本地棋规校验。
 
 模型参数可配置 `max_tokens`、`temperature` 等；将一项设为 `null` 会从请求中删除它。若服务商要求 `max_completion_tokens`，可替换默认的 `max_tokens`。推理模型因输出长度不足而未返回落子时，界面会给出提高输出预算或降低思考强度的提示。
 

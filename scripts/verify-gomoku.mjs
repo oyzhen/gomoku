@@ -116,31 +116,52 @@ assert.ok((await snap(page)).searchStats);
 await page.screenshot({ path: join(SHOTS, "06-local-ai.png") });
 const metrics = await page.evaluate(() => window.__gameMetrics());
 
-// LLM protocol is exercised end-to-end against a deterministic local mock.
+// Both LLM protocols are exercised end-to-end against a deterministic local mock.
 await toMenu(page);
 await page.getByTestId("mode-llm").click();
 await page.getByLabel("接口地址").fill("http://mock.local/v1");
 await page.getByLabel("模型名称").fill("test-gomoku-model");
 await page.getByLabel("API Key").fill("not-a-real-key");
+assert.equal(await page.getByLabel("落子格式").inputValue(), "tools");
 await page.getByLabel("思考强度").selectOption("high");
 await page.screenshot({ path: join(SHOTS, "07-llm-settings.png") });
-let apiCalled = false;
+let apiCalled = "";
 await page.route("http://mock.local/v1/chat/completions", async (route) => {
-  apiCalled = true;
+  apiCalled = "tools";
   const body = route.request().postDataJSON();
   assert.equal(body.model, "test-gomoku-model");
   assert.equal(body.max_tokens, 4096);
   assert.equal(body.reasoning_effort, "high");
-  assert.match(body.messages[0].content, /五子棋/);
-  await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message: { content: '{"row":9,"col":9,"reason":"连接两翼，保持攻势"}' } }] }) });
+  assert.equal(body.tools[0].function.name, "place_move");
+  assert.equal(body.tool_choice.function.name, "place_move");
+  assert.match(body.messages[1].content, /BH8/);
+  assert.doesNotMatch(body.messages[1].content, /当前棋盘/);
+  await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ finish_reason: "tool_calls", message: { content: null, tool_calls: [{ id: "call_mock_1", type: "function", function: { name: "place_move", arguments: '{"row":9,"col":9}' } }] } }] }) });
 });
 await page.getByTestId("start-game").click();
 await clickCell(page, 7, 7);
 await page.waitForFunction(() => window.__gomokuDebug.snapshot().moves.length >= 2, null, { timeout: 8000 });
-assert.equal(apiCalled, true);
-assert.equal((await snap(page)).llmReason, "连接两翼，保持攻势");
+assert.equal(apiCalled, "tools");
+assert.equal((await snap(page)).llmReason, "");
 assert.deepEqual((await snap(page)).moves[1], { row: 8, col: 8, player: 2, number: 2 });
 await page.screenshot({ path: join(SHOTS, "07-llm-mock.png") });
+
+await toMenu(page);
+await page.getByLabel("落子格式").selectOption("json");
+await page.unroute("http://mock.local/v1/chat/completions");
+await page.route("http://mock.local/v1/chat/completions", async (route) => {
+  apiCalled = "json";
+  const body = route.request().postDataJSON();
+  assert.equal(body.tools, undefined);
+  assert.equal(body.tool_choice, undefined);
+  assert.match(body.messages[0].content, /只输出/);
+  await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ choices: [{ message: { content: '{"row":9,"col":9}' } }] }) });
+});
+await page.getByTestId("start-game").click();
+await clickCell(page, 7, 7);
+await page.waitForFunction(() => window.__gomokuDebug.snapshot().moves.length >= 2, null, { timeout: 8000 });
+assert.equal(apiCalled, "json");
+assert.deepEqual((await snap(page)).moves[1], { row: 8, col: 8, player: 2, number: 2 });
 
 // Cold-start mobile check.
 const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
@@ -148,6 +169,10 @@ monitor(mobile);
 await mobile.goto(`${origin}/?debug=1`, { waitUntil: "networkidle" });
 await mobile.waitForFunction(() => window.__GAME_READY__ === true && window.__gomokuDebug);
 await mobile.screenshot({ path: join(SHOTS, "08-mobile-title.png") });
+await mobile.getByTestId("mode-llm").click();
+await mobile.screenshot({ path: join(SHOTS, "08-mobile-llm-settings.png") });
+const llmDimensions = await mobile.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth }));
+assert.ok(llmDimensions.width <= llmDimensions.viewport, "mobile LLM settings must not overflow horizontally");
 await mobile.getByTestId("mode-local").click();
 await mobile.getByTestId("start-game").click();
 await clickCell(mobile, 7, 7);
@@ -158,7 +183,7 @@ assert.ok(dimensions.width <= dimensions.viewport, "mobile page must not overflo
 
 assert.deepEqual(errors, [], `console errors: ${errors.join("\n")}`);
 assert.deepEqual(notFound, [], `404 responses: ${notFound.join("\n")}`);
-console.log("GOMOKU VERIFY OK: themes / Swap2 / undo / victory / restart / pause / local AI / mocked LLM / mobile");
+console.log("GOMOKU VERIFY OK: themes / Swap2 / undo / victory / restart / pause / local AI / mocked LLM tools+JSON / mobile");
 console.log("RENDER METRICS", JSON.stringify(metrics));
 await browser.close();
 server.close();

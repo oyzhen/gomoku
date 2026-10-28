@@ -36,6 +36,8 @@ function loadConfig(): GameConfig {
     config.level = Math.max(1, Math.min(100, Number(config.level) || 35));
     config.humanColor = config.humanColor === WHITE ? WHITE : BLACK;
     config.opening = config.opening === "swap2" ? "swap2" : "none";
+    if (!["tools", "json"].includes(config.llm.responseFormat)) config.llm.responseFormat = "tools";
+    if (!["default", "low", "medium", "high"].includes(config.llm.reasoningEffort)) config.llm.reasoningEffort = "default";
     config.llm.apiKey = sessionStorage.getItem("xuanping.llm.key") ?? "";
     return config;
   } catch {
@@ -180,9 +182,10 @@ export default function Home() {
                 <label>接口地址<input value={config.llm.baseUrl} onChange={(e) => updateLLM("baseUrl", e.target.value)} placeholder="https://api.example.com/v1" /></label>
                 <label>模型名称<input value={config.llm.model} onChange={(e) => updateLLM("model", e.target.value)} placeholder="填写服务商支持的模型 ID" /></label>
                 <label>API Key<input type="password" value={config.llm.apiKey} onChange={(e) => updateLLM("apiKey", e.target.value)} placeholder="仅保留在当前标签页" autoComplete="off" /></label>
+                <label>落子格式<select value={config.llm.responseFormat} onChange={(e) => updateLLM("responseFormat", e.target.value as GameConfig["llm"]["responseFormat"])}><option value="tools">工具调用（推荐）</option><option value="json">简单 JSON（兼容）</option></select></label>
                 <label>思考强度<select value={config.llm.reasoningEffort} onChange={(e) => updateLLM("reasoningEffort", e.target.value as GameConfig["llm"]["reasoningEffort"])}><option value="default">服务商默认</option><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select></label>
                 <label className="model-params">模型参数（JSON）<textarea value={config.llm.parameters} onChange={(e) => updateLLM("parameters", e.target.value)} spellCheck={false} aria-label="模型参数 JSON" /></label>
-                <p>可调整 max_tokens、temperature 等参数；设为 null 可删除一项。高推理模型若报错，可改用 max_completion_tokens，并将 temperature 设为 null。思考强度仅在非默认时发送 reasoning_effort。</p>
+                <p>默认仅发送紧凑棋谱并调用 place_move，不再重复发送文字棋盘；不支持工具调用时可切换简单 JSON。可调整 max_tokens、temperature 等参数，设为 null 可删除一项；高推理模型可改用 max_completion_tokens。</p>
                 <p>OpenAI 兼容的 /chat/completions 接口；服务商需允许浏览器跨域。密钥不会上传至本游戏服务器或写入仓库。</p>
               </div>
             )}
